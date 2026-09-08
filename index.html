@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>三角函數螺線</title>
+<style>
+  :root{
+    --bg:#f7f7f5;
+    --panel:#ffffff;
+    --text:#1f2328;
+    --muted:#667085;
+    --line:#d0d5dd;
+    --accent:#111827;
+    --soft:#eef1f4;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .app{
+    max-width:1200px;
+    margin:0 auto;
+    padding:18px;
+    display:grid;
+    grid-template-columns:minmax(280px,360px) 1fr;
+    gap:16px;
+    min-height:100vh;
+  }
+  .panel,.stage{
+    background:var(--panel);
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    box-shadow:0 8px 24px rgba(0,0,0,.05);
+  }
+  .panel{padding:18px}
+  h1{font-size:22px;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:14px;line-height:1.5;margin-bottom:18px}
+  .formula{
+    font-family: "Times New Roman", serif;
+    font-size:20px;
+    padding:12px 14px;
+    background:var(--soft);
+    border-radius:12px;
+    margin-bottom:16px;
+    overflow-wrap:anywhere;
+  }
+  .control{margin:14px 0}
+  .control-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .control label{font-weight:650}
+  .value{
+    font-variant-numeric:tabular-nums;
+    color:var(--muted);
+    min-width:72px;
+    text-align:right;
+  }
+  input[type=range]{width:100%}
+  .meta{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid #eee;
+    display:grid;
+    gap:6px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  button{
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--text);
+    padding:8px 11px;
+    border-radius:10px;
+    font:inherit;
+    cursor:pointer;
+  }
+  button:hover{background:var(--soft)}
+  .stage{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .stage-head{
+    padding:12px 14px;
+    border-bottom:1px solid #eee;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .hint{font-size:13px;color:var(--muted)}
+  .canvas-wrap{
+    position:relative;
+    flex:1 1 auto;
+    height:clamp(520px,72vh,820px);
+    min-height:520px;
+    touch-action:none;
+    overflow:hidden;
+  }
+  canvas{
+    display:block;
+    width:100%;
+    height:100%;
+  }
+  .badge{
+    position:absolute;
+    top:12px;
+    left:12px;
+    background:rgba(255,255,255,.9);
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:7px 9px;
+    font-size:12px;
+    color:var(--muted);
+    backdrop-filter:blur(4px);
+  }
+  @media (max-width:820px){
+    .app{grid-template-columns:1fr;padding:10px;min-height:auto}
+    .stage{order:1;height:62vh;min-height:430px}
+    .canvas-wrap{height:auto;min-height:0;flex:1 1 0}
+    .panel{order:2}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="panel">
+    <h1>三角函數螺線</h1>
+    <div class="sub">
+      同一條 3D 曲線：前視圖是 sin，上視圖是 cos。拖動參數時即時計算取樣點並重新連線。
+    </div>
+
+    <div class="formula" id="formula"></div>
+
+    <div class="control">
+      <div class="control-row"><label for="a">a｜振幅</label><span class="value" id="aVal"></span></div>
+      <input id="a" type="range" min="-3" max="3" step="0.1" value="1">
+    </div>
+
+    <div class="control">
+      <div class="control-row"><label for="k">k｜頻率</label><span class="value" id="kVal"></span></div>
+      <input id="k" type="range" min="-3" max="3" step="0.1" value="1">
+    </div>
+
+    <div class="control">
+      <div class="control-row"><label for="theta">θ｜相位</label><span class="value" id="thetaVal"></span></div>
+      <input id="theta" type="range" min="-6.283185307179586" max="6.283185307179586" step="0.04908738521234052" value="0">
+    </div>
+
+    <div class="control">
+      <div class="control-row"><label for="b">b｜位移</label><span class="value" id="bVal"></span></div>
+      <input id="b" type="range" min="-3" max="3" step="0.1" value="0">
+    </div>
+
+    <div class="buttons">
+      <button id="frontBtn">前視｜sin</button>
+      <button id="topBtn">上視｜cos</button>
+      <button id="perspBtn">透視</button>
+      <button id="resetBtn">重設參數</button>
+    </div>
+
+    <div class="meta">
+      <div>顯示範圍：x = −2π ～ 4π</div>
+      <div id="periodText">週期：</div>
+      <div id="phaseText">水平位移：</div>
+      <div>標記：每 π/2 一點</div>
+      <div>操作：拖曳畫面旋轉；滑鼠滾輪／雙指縮放。</div>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head">
+      <strong id="viewLabel">透視圖</strong>
+      <span class="hint">純 HTML + JavaScript，無外部套件</span>
+    </div>
+    <div class="canvas-wrap" id="wrap">
+      <canvas id="canvas"></canvas>
+      <div class="badge">x →　y = cos　z = sin</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const TAU = Math.PI * 2;
+  const X_MIN = -2 * Math.PI;
+  const X_MAX =  4 * Math.PI;
+  const SAMPLE_STEP = TAU / 120; // 夠密即可；點數由範圍 ÷ step 自動算出
+
+  const canvas = document.getElementById('canvas');
+  const wrap = document.getElementById('wrap');
+  const ctx = canvas.getContext('2d');
+
+  const ids = ['a','k','theta','b'];
+  const inputs = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+  const vals = Object.fromEntries(ids.map(id => [id, document.getElementById(id+'Val')]));
+
+  let rotX = -0.55;
+  let rotY = 0.65;
+  let scale = 1;
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+  let currentView = 'perspective';
+
+  function params(){
+    return {
+      a: parseFloat(inputs.a.value),
+      k: parseFloat(inputs.k.value),
+      theta: parseFloat(inputs.theta.value),
+      b: parseFloat(inputs.b.value)
+    };
+  }
+
+  function fmt(n, digits=2){
+    if (Math.abs(n) < 1e-9) n = 0;
+    return Number(n.toFixed(digits)).toString();
+  }
+
+  function updateLabels(){
+    const {a,k,theta,b} = params();
+    vals.a.textContent = fmt(a,1);
+    vals.k.textContent = fmt(k,1);
+    vals.theta.textContent = fmt(theta,2) + ' rad';
+    vals.b.textContent = fmt(b,1);
+
+    const signTheta = theta >= 0 ? '+' : '−';
+    const signB = b >= 0 ? '+' : '−';
+    document.getElementById('formula').innerHTML =
+      `y = ${fmt(a,1)} · sin(${fmt(k,1)}x ${signTheta} ${fmt(Math.abs(theta),2)}) ${signB} ${fmt(Math.abs(b),1)}`;
+
+    document.getElementById('periodText').textContent =
+      Math.abs(k) < 1e-9 ? '週期：k = 0 時沒有週期變化' : `週期：${fmt(TAU/Math.abs(k),3)} rad = 2π / |k|`;
+
+    document.getElementById('phaseText').textContent =
+      Math.abs(k) < 1e-9 ? '水平位移：k = 0 時不定義' : `水平位移：${fmt(-theta/k,3)} rad = −θ / k`;
+  }
+
+  function resize(){
+    const rect = wrap.getBoundingClientRect();
+    const cssW = Math.max(280, rect.width || window.innerWidth - 20);
+    const cssH = Math.max(360, rect.height || window.innerHeight * 0.55);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(cssW * dpr));
+    canvas.height = Math.max(1, Math.floor(cssH * dpr));
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+
+  function rotatePoint(p){
+    let [x,y,z] = p;
+
+    const cy = Math.cos(rotY), sy = Math.sin(rotY);
+    let x1 = x * cy + z * sy;
+    let z1 = -x * sy + z * cy;
+
+    const cx = Math.cos(rotX), sx = Math.sin(rotX);
+    let y2 = y * cx - z1 * sx;
+    let z2 = y * sx + z1 * cx;
+
+    return [x1, y2, z2];
+  }
+
+  function project(p, w, h){
+    // 顯示中心設在 x = π（[-2π, 4π] 的中點）
+    const centered = [p[0] - Math.PI, p[1], p[2]];
+    const r = rotatePoint(centered);
+    const base = Math.min(w / 22, h / 9) * scale;
+    const perspective = currentView === 'perspective' ? (1 / (1 + Math.max(-0.75, r[2] * 0.018))) : 1;
+    return [
+      w/2 + r[0] * base * perspective,
+      h/2 - r[1] * base * perspective,
+      r[2]
+    ];
+  }
+
+  function helixPoint(x, P){
+    const ang = P.k * x + P.theta;
+    const y = P.a * Math.cos(ang) + P.b;
+    const z = P.a * Math.sin(ang) + P.b;
+    return [x, y, z];
+  }
+
+  function drawLine3D(points, stroke, width=2){
+    const rect = wrap.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    ctx.beginPath();
+    points.forEach((p,i)=>{
+      const q = project(p,w,h);
+      if(i===0) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
+    });
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+
+  function drawDot3D(p, radius, fill, label=null){
+    const rect = wrap.getBoundingClientRect();
+    const q = project(p,rect.width,rect.height);
+    ctx.beginPath();
+    ctx.arc(q[0],q[1],radius,0,TAU);
+    ctx.fillStyle=fill;
+    ctx.fill();
+    if(label){
+      ctx.font='12px system-ui, sans-serif';
+      ctx.fillStyle='#475467';
+      ctx.fillText(label,q[0]+7,q[1]-7);
+    }
+  }
+
+  function piLabel(x){
+    const n = Math.round(x / (Math.PI/2));
+    if(n===0) return '0';
+    const sign = n<0 ? '−' : '';
+    const m = Math.abs(n);
+    if(m===1) return sign+'π/2';
+    if(m===2) return sign+'π';
+    if(m%2===0) return sign+(m/2)+'π';
+    return sign+m+'π/2';
+  }
+
+  function drawAxes(){
+    const axis = [
+      [[X_MIN-0.5,0,0],[X_MAX+0.5,0,0]],
+      [[0,-3.5,0],[0,3.5,0]],
+      [[0,0,-3.5],[0,0,3.5]]
+    ];
+    axis.forEach(a=>drawLine3D(a,'#d0d5dd',1));
+  }
+
+  function draw(){
+    const rect = wrap.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0,0,w,h);
+
+    const P = params();
+    updateLabels();
+
+    drawAxes();
+
+    const pts = [];
+    for(let x=X_MIN; x<=X_MAX + SAMPLE_STEP*0.5; x+=SAMPLE_STEP){
+      pts.push(helixPoint(x,P));
+    }
+    drawLine3D(pts,'#111827',2.4);
+
+    // π/2 markers
+    for(let x=X_MIN; x<=X_MAX+1e-9; x+=Math.PI/2){
+      drawDot3D(helixPoint(x,P),4.3,'#ffffff',piLabel(x));
+      drawDot3D(helixPoint(x,P),2.4,'#111827');
+    }
+  }
+
+  function setView(view){
+    currentView = view;
+    if(view==='front'){
+      // Rhino-like front: look along -Y -> XZ plane; vertical is Z = sin
+      rotX = Math.PI/2;
+      rotY = 0;
+      document.getElementById('viewLabel').textContent='前視圖｜sin';
+    } else if(view==='top'){
+      // top: look along +Z -> XY plane; vertical is Y = cos
+      rotX = 0;
+      rotY = 0;
+      document.getElementById('viewLabel').textContent='上視圖｜cos';
+    } else {
+      rotX=-0.55; rotY=0.65;
+      document.getElementById('viewLabel').textContent='透視圖';
+    }
+    draw();
+  }
+
+  ids.forEach(id => inputs[id].addEventListener('input', draw));
+  document.getElementById('frontBtn').onclick=()=>setView('front');
+  document.getElementById('topBtn').onclick=()=>setView('top');
+  document.getElementById('perspBtn').onclick=()=>setView('perspective');
+  document.getElementById('resetBtn').onclick=()=>{
+    inputs.a.value=1;
+    inputs.k.value=1;
+    inputs.theta.value=0;
+    inputs.b.value=0;
+    scale=1;
+    setView('perspective');
+  };
+
+  wrap.addEventListener('pointerdown', e=>{
+    dragging=true; lastX=e.clientX; lastY=e.clientY;
+    wrap.setPointerCapture?.(e.pointerId);
+  });
+  wrap.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY;
+    lastX=e.clientX; lastY=e.clientY;
+    currentView='perspective';
+    document.getElementById('viewLabel').textContent='透視圖';
+    rotY += dx*0.008;
+    rotX += dy*0.008;
+    draw();
+  });
+  wrap.addEventListener('pointerup', ()=>dragging=false);
+  wrap.addEventListener('pointercancel', ()=>dragging=false);
+  wrap.addEventListener('wheel', e=>{
+    e.preventDefault();
+    scale *= e.deltaY>0 ? 0.92 : 1.08;
+    scale = Math.max(0.45, Math.min(2.5, scale));
+    draw();
+  }, {passive:false});
+
+  let pinchDist=null;
+  wrap.addEventListener('touchmove', e=>{
+    if(e.touches.length===2){
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const d=Math.hypot(dx,dy);
+      if(pinchDist!==null){
+        scale *= d/pinchDist;
+        scale=Math.max(0.45,Math.min(2.5,scale));
+      }
+      pinchDist=d;
+      draw();
+    }
+  }, {passive:false});
+  wrap.addEventListener('touchend', ()=>pinchDist=null);
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 150));
+  requestAnimationFrame(() => requestAnimationFrame(resize));
+})();
+</script>
+</body>
+</html>
