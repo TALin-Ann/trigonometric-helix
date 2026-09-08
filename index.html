@@ -236,8 +236,9 @@
 
     const signTheta = theta >= 0 ? '+' : '−';
     const signB = b >= 0 ? '+' : '−';
+    const trigName = currentView === 'top' ? 'cos' : 'sin';
     document.getElementById('formula').innerHTML =
-      `y = ${fmt(a,1)} · sin(${fmt(k,1)}x ${signTheta} ${fmt(Math.abs(theta),2)}) ${signB} ${fmt(Math.abs(b),1)}`;
+      `y = ${fmt(a,1)} · ${trigName}(${fmt(k,1)}x ${signTheta} ${fmt(Math.abs(theta),2)}) ${signB} ${fmt(Math.abs(b),1)}`;
 
     document.getElementById('periodText').textContent =
       Math.abs(k) < 1e-9 ? '週期：k = 0 時沒有週期變化' : `週期：${fmt(TAU/Math.abs(k),3)} rad = 2π / |k|`;
